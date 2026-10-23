@@ -7,6 +7,7 @@ mod cli;
 mod cli_discovery;
 mod client;
 mod config;
+mod config_source;
 mod db;
 mod instances;
 mod logging;
@@ -19,6 +20,7 @@ mod server_auth;
 mod spinner;
 mod telemetry;
 mod transport;
+mod ui;
 
 use anyhow::{bail, Result};
 use output::OutputFormat;
@@ -68,6 +70,8 @@ fn print_usage() {
     eprintln!("  mcp reload --url <url>              Reload a remote proxy over HTTP");
     eprintln!("  mcp serve                           Start proxy server (stdio)");
     eprintln!("  mcp serve --http [addr]             Start proxy server over HTTP");
+    eprintln!("  mcp serve --http [addr] --management");
+    eprintln!("                                      Also serve the web UI, behind serverAuth");
     eprintln!("  mcp logs                            Show recent audit log entries");
     eprintln!("  mcp logs --limit N                  Show last N entries (default: 50)");
     eprintln!("  mcp logs --server <name>            Filter by backend server");
@@ -89,6 +93,8 @@ fn print_usage() {
     eprintln!("  mcp config path                     Show config file path");
     eprintln!("  mcp config edit                     Open config in $EDITOR");
     eprintln!("  mcp completions <shell>             Generate shell completions (bash, zsh, fish)");
+    eprintln!("  mcp ui [--addr HOST:PORT] [--no-open] [--read-only]");
+    eprintln!("                                      Local web UI: servers, tools, audit, ACL");
     eprintln!("  mcp healthcheck [url]               HTTP health probe (for containers)");
     eprintln!();
     eprintln!("Flags:");
@@ -210,7 +216,26 @@ async fn run() -> Result<()> {
                 "catalog filtered for this instance"
             );
         }
-        return serve::run(cfg, http_addr.as_deref(), insecure, filter).await;
+        let management = rest.iter().any(|a| a == "--management");
+        return serve::run(cfg, http_addr.as_deref(), insecure, filter, management).await;
+    }
+
+    if args[0] == "ui" {
+        let rest = &args[1..];
+        let value_of = |flag: &str| -> Option<String> {
+            rest.iter()
+                .position(|a| a == flag)
+                .and_then(|pos| rest.get(pos + 1))
+                .filter(|a| !a.starts_with("--"))
+                .map(|a| a.to_string())
+        };
+        let addr = value_of("--addr").unwrap_or_else(|| "127.0.0.1:7332".to_string());
+        return ui::run(ui::Options {
+            addr,
+            open: !rest.iter().any(|a| a == "--no-open"),
+            read_only: rest.iter().any(|a| a == "--read-only"),
+        })
+        .await;
     }
 
     // Shared database pool for audit logging and tool cache.
