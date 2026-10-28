@@ -1,0 +1,1137 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>mcp · web ui (protótipo)</title>
+<style>
+  :root {
+    --bg: #080b0a;
+    --bg-1: #0c1110;
+    --panel: #111816;
+    --panel-2: #151e1b;
+    --line: #23312c;
+    --line-soft: #1a2521;
+    --txt: #e9f2ef;
+    --txt-2: #a3b8b0;
+    --txt-3: #6d8279;
+    --accent: #3fd6a6;
+    --accent-2: #2bb389;
+    --accent-dim: rgba(63, 214, 166, .11);
+    --warn: #e8b03e;
+    --warn-dim: rgba(232, 176, 62, .12);
+    --err: #f0716b;
+    --err-dim: rgba(240, 113, 107, .12);
+    --read: #6aa9ff;
+    --read-dim: rgba(106, 169, 255, .12);
+    --mono: ui-monospace, "SF Mono", SFMono-Regular, "JetBrains Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", system-ui, sans-serif;
+    --r: 10px;
+    --shadow: 0 1px 0 rgba(255,255,255,.03) inset, 0 8px 24px -12px rgba(0,0,0,.8);
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--txt);
+    font: 13px/1.5 var(--sans); -webkit-font-smoothing: antialiased;
+  }
+  ::selection { background: rgba(63,214,166,.28); }
+  a { color: inherit; text-decoration: none; }
+
+  /* ---------- shell ---------- */
+  .app { display: grid; grid-template-columns: 236px 1fr; min-height: 100vh; }
+  .side {
+    position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column;
+    background: linear-gradient(180deg, #0b100f, #090d0c);
+    border-right: 1px solid var(--line-soft); padding: 14px 12px;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; padding: 4px 8px 16px; }
+  .logo {
+    width: 26px; height: 26px; border-radius: 7px; display: grid; place-items: center;
+    background: var(--accent); color: #04100c; font: 700 13px/1 var(--mono);
+    box-shadow: 0 0 0 1px rgba(63,214,166,.35), 0 6px 18px -6px rgba(63,214,166,.6);
+  }
+  .brand-name { font-weight: 650; letter-spacing: -.01em; font-size: 14px; }
+  .brand-sub { color: var(--txt-3); font-size: 11px; margin-top: -2px; }
+  .nav { display: flex; flex-direction: column; gap: 2px; margin-top: 4px; }
+  .nav-label {
+    color: var(--txt-3); font-size: 10.5px; text-transform: uppercase;
+    letter-spacing: .09em; padding: 14px 10px 6px; font-weight: 600;
+  }
+  .nav a {
+    display: flex; align-items: center; gap: 9px; padding: 7px 10px; border-radius: 8px;
+    color: var(--txt-2); font-weight: 500; transition: background .12s, color .12s;
+  }
+  .nav a:hover { background: rgba(255,255,255,.04); color: var(--txt); }
+  .nav a.on { background: var(--accent-dim); color: var(--accent); }
+  .nav a svg { width: 15px; height: 15px; opacity: .85; }
+  .nav a.on svg { opacity: 1; }
+  .nav .count {
+    margin-left: auto; font: 500 10.5px/1 var(--mono); color: var(--txt-3);
+    background: rgba(255,255,255,.05); border-radius: 20px; padding: 3px 6px;
+  }
+  .nav a.on .count { color: var(--accent); background: rgba(63,214,166,.14); }
+  .side-foot { margin-top: auto; padding: 10px; border-top: 1px solid var(--line-soft); }
+  .instance-chip {
+    display: flex; align-items: center; gap: 8px; padding: 8px 9px; border-radius: 8px;
+    border: 1px solid var(--line-soft); background: rgba(255,255,255,.02); font-size: 11.5px;
+  }
+  .instance-chip b { font-weight: 600; }
+  .instance-chip code { font-family: var(--mono); color: var(--txt-2); font-size: 10.5px; }
+
+  .main { min-width: 0; display: flex; flex-direction: column; }
+  .topbar {
+    position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 12px;
+    padding: 12px 26px; border-bottom: 1px solid var(--line-soft);
+    background: rgba(8,11,10,.82); backdrop-filter: blur(10px);
+  }
+  .topbar .crumb { color: var(--txt-3); font-size: 12px; }
+  .topbar .crumb b { color: var(--txt); font-weight: 600; }
+  .spacer { flex: 1; }
+  .kbd {
+    font: 500 10.5px/1 var(--mono); color: var(--txt-2); border: 1px solid var(--line);
+    border-bottom-width: 2px; border-radius: 5px; padding: 3px 5px; background: var(--panel);
+  }
+  .searchbtn {
+    display: flex; align-items: center; gap: 8px; padding: 6px 8px 6px 10px;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+    color: var(--txt-3); cursor: pointer; font-size: 12px; min-width: 210px;
+  }
+  .searchbtn:hover { border-color: #2e403a; color: var(--txt-2); }
+  .searchbtn .spacer { flex: 1; }
+  .view { padding: 24px 26px 60px; max-width: 1240px; width: 100%; }
+
+  /* ---------- primitives ---------- */
+  h1 { font-size: 21px; letter-spacing: -.02em; margin: 0; font-weight: 650; }
+  h2 { font-size: 14px; margin: 0; font-weight: 620; letter-spacing: -.01em; }
+  h3 { font-size: 12px; margin: 0; font-weight: 620; color: var(--txt-2); }
+  p.sub { color: var(--txt-3); margin: 5px 0 0; font-size: 12.5px; }
+  .page-head { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 20px; }
+  .page-head .actions { margin-left: auto; display: flex; gap: 8px; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 7px; padding: 7px 11px; border-radius: 8px;
+    border: 1px solid var(--line); background: var(--panel); color: var(--txt);
+    font: 500 12px/1.2 var(--sans); cursor: pointer; transition: .12s;
+  }
+  .btn:hover { border-color: #35483f; background: var(--panel-2); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #04120d; font-weight: 640; }
+  .btn.primary:hover { background: #4be3b3; }
+  .btn.ghost { background: transparent; }
+  .btn.danger { color: var(--err); border-color: rgba(240,113,107,.3); }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+  .btn.sm { padding: 5px 8px; font-size: 11.5px; }
+  .card {
+    background: linear-gradient(180deg, rgba(255,255,255,.018), transparent 60%), var(--panel);
+    border: 1px solid var(--line-soft); border-radius: var(--r); box-shadow: var(--shadow);
+  }
+  .card-h {
+    display: flex; align-items: center; gap: 10px; padding: 12px 14px;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .card-h .spacer { flex: 1; }
+  .card-b { padding: 14px; }
+  .card-b.flush { padding: 0; }
+  .grid { display: grid; gap: 14px; }
+  .g2 { grid-template-columns: 1fr 1fr; }
+  .g3 { grid-template-columns: repeat(3, 1fr); }
+  .g4 { grid-template-columns: repeat(4, 1fr); }
+  .row { display: flex; align-items: center; gap: 10px; }
+  .muted { color: var(--txt-3); }
+  .mono { font-family: var(--mono); }
+  .tiny { font-size: 11px; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 5px; padding: 2.5px 7px; border-radius: 6px;
+    font: 500 10.5px/1.5 var(--mono); border: 1px solid var(--line); color: var(--txt-2);
+    background: rgba(255,255,255,.025); white-space: nowrap;
+  }
+  .chip.ok { color: var(--accent); border-color: rgba(63,214,166,.28); background: var(--accent-dim); }
+  .chip.warn { color: var(--warn); border-color: rgba(232,176,62,.28); background: var(--warn-dim); }
+  .chip.err { color: var(--err); border-color: rgba(240,113,107,.28); background: var(--err-dim); }
+  .chip.read { color: var(--read); border-color: rgba(106,169,255,.28); background: var(--read-dim); }
+  .chip.n { color: var(--txt-3); }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--txt-3); flex: none; }
+  .dot.ok { background: var(--accent); box-shadow: 0 0 0 3px rgba(63,214,166,.13); }
+  .dot.warn { background: var(--warn); box-shadow: 0 0 0 3px rgba(232,176,62,.13); }
+  .dot.err { background: var(--err); box-shadow: 0 0 0 3px rgba(240,113,107,.13); }
+  .dot.idle { background: #5b6f67; }
+  .pulse { position: relative; }
+  .pulse::after {
+    content: ""; position: absolute; inset: -4px; border-radius: 50%;
+    border: 1px solid currentColor; opacity: .5; animation: pulse 2s ease-out infinite;
+  }
+  @keyframes pulse { 0% { transform: scale(.6); opacity: .5 } 100% { transform: scale(1.5); opacity: 0 } }
+
+  table { width: 100%; border-collapse: collapse; }
+  th {
+    text-align: left; font: 600 10.5px/1 var(--sans); letter-spacing: .07em; text-transform: uppercase;
+    color: var(--txt-3); padding: 9px 14px; border-bottom: 1px solid var(--line-soft);
+  }
+  td { padding: 9px 14px; border-bottom: 1px solid rgba(35,49,44,.5); vertical-align: middle; }
+  tbody tr:last-child td { border-bottom: 0; }
+  tbody tr.click { cursor: pointer; }
+  tbody tr.click:hover { background: rgba(255,255,255,.022); }
+  td.num, th.num { text-align: right; font-family: var(--mono); font-size: 11.5px; }
+
+  .stat { padding: 14px 15px; }
+  .stat .k { color: var(--txt-3); font-size: 11px; font-weight: 550; letter-spacing: .02em; }
+  .stat .v { font: 620 26px/1.15 var(--sans); letter-spacing: -.03em; margin-top: 8px; display: flex; align-items: baseline; gap: 7px; }
+  .stat .v small { font: 500 11.5px/1 var(--mono); color: var(--txt-3); letter-spacing: 0; }
+  .stat .d { font-size: 11px; color: var(--txt-3); margin-top: 7px; display: flex; align-items: center; gap: 5px; }
+
+  .banner {
+    display: flex; gap: 12px; align-items: center; padding: 11px 14px; border-radius: var(--r);
+    border: 1px solid rgba(232,176,62,.28); background: linear-gradient(90deg, var(--warn-dim), rgba(232,176,62,.03));
+    margin-bottom: 16px;
+  }
+  .banner .t { font-weight: 600; font-size: 12.5px; }
+  .banner .d { color: var(--txt-2); font-size: 12px; }
+  .banner .actions { margin-left: auto; display: flex; gap: 8px; }
+
+  .seg { display: inline-flex; padding: 2px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; }
+  .seg button {
+    border: 0; background: transparent; color: var(--txt-3); padding: 5px 10px; border-radius: 6px;
+    font: 550 11.5px/1.2 var(--sans); cursor: pointer;
+  }
+  .seg button.on { background: rgba(255,255,255,.07); color: var(--txt); }
+
+  .field { margin-bottom: 13px; }
+  .field label { display: flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 570; color: var(--txt-2); margin-bottom: 6px; }
+  .field .req { color: var(--accent); font-size: 10px; }
+  .input, select, textarea {
+    width: 100%; background: #0b1110; border: 1px solid var(--line); color: var(--txt);
+    border-radius: 7px; padding: 8px 10px; font: 12px/1.45 var(--mono); outline: none;
+    transition: border-color .12s, box-shadow .12s;
+  }
+  .input:focus, select:focus, textarea:focus { border-color: var(--accent-2); box-shadow: 0 0 0 3px rgba(63,214,166,.12); }
+  .hint { color: var(--txt-3); font-size: 11px; margin-top: 5px; font-family: var(--sans); }
+
+  pre.code {
+    margin: 0; padding: 12px 14px; background: #080d0b; border-radius: 8px;
+    border: 1px solid var(--line-soft); overflow: auto; font: 11.5px/1.65 var(--mono); color: #c8dbd3;
+  }
+  .k-str { color: #8fd6b4; } .k-key { color: #86b8ff; } .k-num { color: #e8b03e; }
+  .k-bool { color: #c99df5; } .k-null { color: #6d8279; } .k-redact { color: #4d5f58; background: #16201d; border-radius: 3px; padding: 0 3px; }
+  .k-com { color: #4d6159; }
+
+  .split { display: grid; grid-template-columns: minmax(0,1fr) 380px; gap: 14px; align-items: start; }
+  .split > *, .grid > * { min-width: 0; }
+  .pg { grid-template-columns: 240px minmax(0,1fr) 424px; }
+  @media (max-width: 1380px) {
+    .pg { grid-template-columns: 240px minmax(0,1fr); }
+    .pg > :nth-child(3) { grid-column: 1 / -1; }
+  }
+  .stack { display: flex; flex-direction: column; gap: 14px; }
+
+  /* list detail */
+  .detail-head { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 16px; }
+  .avatar {
+    width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center; flex: none;
+    background: var(--panel-2); border: 1px solid var(--line); font: 600 13px/1 var(--mono); color: var(--accent);
+  }
+  .avatar.sm { width: 24px; height: 24px; border-radius: 6px; font-size: 10px; }
+  .tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--line-soft); margin-bottom: 16px; }
+  .tabs button {
+    border: 0; background: transparent; color: var(--txt-3); padding: 9px 12px; cursor: pointer;
+    font: 550 12px/1.2 var(--sans); border-bottom: 2px solid transparent; margin-bottom: -1px;
+  }
+  .tabs button:hover { color: var(--txt-2); }
+  .tabs button.on { color: var(--txt); border-bottom-color: var(--accent); }
+
+  .kv { display: grid; grid-template-columns: 116px 1fr; gap: 8px 12px; font-size: 12px; }
+  .kv dt { color: var(--txt-3); }
+  .kv dd { margin: 0; }
+
+  /* playground */
+  .toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .tlist { max-height: 620px; overflow: auto; }
+  .titem {
+    display: flex; align-items: center; gap: 9px; padding: 8px 12px; cursor: pointer;
+    border-bottom: 1px solid rgba(35,49,44,.4);
+  }
+  .titem:hover { background: rgba(255,255,255,.022); }
+  .titem.on { background: var(--accent-dim); box-shadow: inset 2px 0 0 var(--accent); }
+  .titem .n { font: 500 11.5px/1.4 var(--mono); }
+  .titem .g { margin-left: auto; }
+
+  /* activity */
+  .act-row { cursor: pointer; }
+  .act-row:hover { background: rgba(255,255,255,.022); }
+  .act-detail td { background: #0a100e; padding: 0; }
+  .act-detail .inner { padding: 14px 16px; display: grid; grid-template-columns: 1fr 300px; gap: 16px; }
+  .live { display: inline-flex; align-items: center; gap: 6px; color: var(--accent); font: 600 10.5px/1 var(--mono); letter-spacing: .08em; }
+
+  /* acl matrix */
+  .matrix { width: 100%; border-collapse: separate; border-spacing: 0; }
+  .matrix th, .matrix td { border-bottom: 1px solid var(--line-soft); padding: 8px 10px; font-size: 11.5px; }
+  .matrix th { font: 600 10px/1 var(--sans); letter-spacing: .07em; text-transform: uppercase; color: var(--txt-3); }
+  .matrix .cell { text-align: center; font-family: var(--mono); }
+  .allow { color: var(--accent); } .deny { color: var(--err); } .maybe { color: var(--warn); }
+
+  .verdict { border-radius: var(--r); border: 1px solid; padding: 16px; }
+  .verdict.allow { border-color: rgba(63,214,166,.3); background: linear-gradient(135deg, var(--accent-dim), transparent); }
+  .verdict.deny { border-color: rgba(240,113,107,.3); background: linear-gradient(135deg, var(--err-dim), transparent); }
+  .verdict .label { font: 700 11px/1 var(--mono); letter-spacing: .1em; }
+
+  .empty { text-align: center; padding: 40px 20px; color: var(--txt-3); }
+
+  /* palette */
+  .palette-wrap {
+    position: fixed; inset: 0; background: rgba(4,7,6,.62); backdrop-filter: blur(6px);
+    display: none; place-items: start center; padding-top: 12vh; z-index: 100;
+  }
+  .palette-wrap.open { display: grid; }
+  .palette {
+    width: 560px; max-width: 92vw; background: #0d1211; border: 1px solid #2b3b35; border-radius: 12px;
+    box-shadow: 0 40px 80px -20px rgba(0,0,0,.9); overflow: hidden;
+  }
+  .palette input {
+    width: 100%; border: 0; background: transparent; color: var(--txt); padding: 15px 16px;
+    font: 14px/1.2 var(--sans); outline: none; border-bottom: 1px solid var(--line-soft);
+  }
+  .palette .res { max-height: 340px; overflow: auto; padding: 6px; }
+  .palette .ritem { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 8px; cursor: pointer; }
+  .palette .ritem.on, .palette .ritem:hover { background: rgba(255,255,255,.05); }
+  .palette .ritem .k { margin-left: auto; color: var(--txt-3); font-size: 10.5px; font-family: var(--mono); }
+  .palette .foot { padding: 8px 12px; border-top: 1px solid var(--line-soft); color: var(--txt-3); font-size: 10.5px; display: flex; gap: 12px; }
+
+  .tip { position: relative; }
+  .tip[data-tip]:hover::after {
+    content: attr(data-tip); position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%);
+    background: #1b2622; color: var(--txt-2); border: 1px solid var(--line); border-radius: 6px;
+    padding: 5px 8px; font: 500 10.5px/1.3 var(--sans); white-space: nowrap; z-index: 50;
+  }
+  .scroll-x { overflow-x: auto; }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <div class="brand" title="Protótipo estático — dados fictícios, sem backend">
+      <div class="logo">m</div>
+      <div>
+        <div class="brand-name">mcp</div>
+        <div class="brand-sub">control room</div>
+      </div>
+    </div>
+    <nav class="nav" id="nav">
+      <div class="nav-label">Operate</div>
+      <a href="#/overview" data-route="overview">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 13h6V4H4zM14 20h6v-9h-6zM4 20h6v-3H4zM14 7h6V4h-6z"/></svg>
+        Overview
+      </a>
+      <a href="#/servers" data-route="servers">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="4" width="18" height="6" rx="1.5"/><rect x="3" y="14" width="18" height="6" rx="1.5"/><path d="M7 7h.01M7 17h.01"/></svg>
+        Servers <span class="count">9</span>
+      </a>
+      <a href="#/playground" data-route="playground">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M8 6l-5 6 5 6M16 6l5 6-5 6"/></svg>
+        Playground
+      </a>
+      <a href="#/activity" data-route="activity">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg>
+        Activity <span class="count" id="act-count">1.8k</span>
+      </a>
+      <div class="nav-label">Govern</div>
+      <a href="#/access" data-route="access">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/><path d="M9 12l2 2 4-4"/></svg>
+        Access
+      </a>
+      <a href="#/settings" data-route="settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.9l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-2.9 1.2V21a2 2 0 11-4 0v-.1A1.7 1.7 0 007 19.4l-.1.1a2 2 0 11-2.8-2.8l.1-.1A1.7 1.7 0 003 15H3a2 2 0 110-4h.1A1.7 1.7 0 004.6 9l-.1-.1a2 2 0 112.8-2.8l.1.1A1.7 1.7 0 009 4.6V4a2 2 0 114 0v.1A1.7 1.7 0 0015 4.6l.1-.1a2 2 0 112.8 2.8l-.1.1A1.7 1.7 0 0021 9v.1a2 2 0 110 3.9h-.1"/></svg>
+        Settings
+      </a>
+    </nav>
+    <div class="side-foot">
+      <div class="instance-chip">
+        <span class="dot ok pulse" style="color:var(--accent)"></span>
+        <div style="min-width:0">
+          <div><b>serve</b> <code>127.0.0.1:7332</code></div>
+          <div class="tiny muted" style="font-size:10px">v0.6.2 · uptime 4h12m</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div class="crumb">mcp / <b id="crumb">Overview</b></div>
+      <div class="spacer"></div>
+      <div class="searchbtn" id="openPalette">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+        Search servers, tools, runs
+        <span class="spacer"></span>
+        <span class="kbd">⌘K</span>
+      </div>
+      <div class="chip ok" title="modo local: escrita habilitada">local · admin</div>
+      <div class="avatar sm" style="background:var(--accent);color:#04120d;border:0">al</div>
+    </header>
+    <div class="view" id="view"></div>
+  </main>
+</div>
+
+<div class="palette-wrap" id="paletteWrap">
+  <div class="palette">
+    <input id="paletteInput" placeholder="Jump to server, tool or page…" autocomplete="off">
+    <div class="res" id="paletteRes"></div>
+    <div class="foot"><span><span class="kbd">↑↓</span> navegar</span><span><span class="kbd">↵</span> abrir</span><span><span class="kbd">esc</span> fechar</span></div>
+  </div>
+</div>
+
+<script>
+/* ------------------------------------------------------------------ data */
+const servers = [
+  { name:'sentry', type:'http', endpoint:'https://mcp.sentry.dev/sse', state:'connected', tools:12, read:8, write:4, last:'2s', idle:'never', auth:'oauth · expira em 41m', proto:'2026-07-28', calls:412 },
+  { name:'slack', type:'stdio', endpoint:'npx -y slack-mcp-server@latest', state:'connected', tools:23, read:15, write:8, last:'8s', idle:'adaptive · 3m', auth:'token xoxp · 12d', proto:'2025-11-25', calls:638 },
+  { name:'github', type:'http', endpoint:'https://api.githubcopilot.com/mcp/', state:'connected', tools:31, read:19, write:12, last:'31s', idle:'adaptive · 5m', auth:'oauth · expira em 3h', proto:'2026-07-28', calls:521 },
+  { name:'grafana', type:'stdio', endpoint:'uvx mcp-grafana', state:'idle', tools:18, read:18, write:0, last:'22m', idle:'adaptive · 1m', auth:'—', proto:'2025-11-25', calls:46 },
+  { name:'kubectl', type:'cli', endpoint:'kubectl (cli_only: get, describe, logs, top)', state:'idle', tools:9, read:9, write:0, last:'1h', idle:'adaptive · 1m', auth:'kubeconfig', proto:'2025-11-25', calls:11 },
+  { name:'notion', type:'http', endpoint:'https://mcp.notion.com/mcp', state:'error', tools:0, read:0, write:0, last:'2h', idle:'never', auth:'401 — token expirado', proto:'—', calls:0 },
+  { name:'linear', type:'http', endpoint:'https://mcp.linear.app/sse', state:'cached', tools:14, read:9, write:5, last:'—', idle:'never', auth:'oauth · expira em 55m', proto:'—', calls:0 },
+  { name:'filesystem', type:'stdio', endpoint:'npx -y @modelcontextprotocol/server-filesystem', state:'idle', tools:11, read:7, write:4, last:'3h', idle:'adaptive · 1m', auth:'—', proto:'2025-06-18', calls:4 },
+  { name:'pagerduty', type:'http', endpoint:'https://mcp.pagerduty.com/mcp', state:'connected', tools:7, read:4, write:3, last:'12m', idle:'never', auth:'token · 8d', proto:'2025-11-25', calls:33 },
+];
+
+const tools = [
+  { s:'sentry', n:'search_issues', d:'Search for issues in Sentry', kind:'read', desc:'Busca issues com a sintaxe de busca do Sentry. Retorna no máximo 100 resultados por página.',
+    schema:[
+      { k:'query', t:'string', req:true, d:'The search query (required)', ph:'is:unresolved level:error', big:true },
+      { k:'project', t:'string', d:'Project slug', ph:'backend-api' },
+      { k:'sort', t:'enum', d:'Sort order', opts:['date','freq','new'], val:'date' },
+      { k:'per_page', t:'number', d:'Results per page (max 100)', val:'25' },
+    ]},
+  { s:'sentry', n:'get_issue_details', d:'Get details of a specific issue', kind:'read', desc:'Retorna o detalhamento de uma issue, incluindo stacktrace e tags.' },
+  { s:'sentry', n:'resolve_issue', d:'Resolve an issue', kind:'write', desc:'Marca a issue como resolvida no projeto.' },
+  { s:'github', n:'search_repositories', d:'Search GitHub repositories', kind:'read' },
+  { s:'github', n:'gh_pr_merge', d:'Merge a pull request', kind:'write', desc:'Faz merge do PR. Requer access=write.' },
+  { s:'github', n:'list_pull_requests', d:'List pull requests', kind:'read' },
+  { s:'slack', n:'list_channels', d:'List channels in the workspace', kind:'read' },
+  { s:'slack', n:'post_message', d:'Post a message to a channel', kind:'write' },
+  { s:'grafana', n:'search_dashboards', d:'Search dashboards', kind:'read' },
+  { s:'pagerduty', n:'acknowledge_incident', d:'Acknowledge an incident', kind:'write' },
+];
+
+const activity = [
+  { t:'22:14:02', who:'alice', tool:'sentry__search_issues', kind:'read', st:'ok', ms:412, args:'{"query":"is:unresolved level:error"}', acl:'allow · role=dev', cls:'read (heuristic, 0.94)' },
+  { t:'22:13:58', who:'ci-bot', tool:'github__gh_pr_merge', kind:'write', st:'denied', ms:0, args:'{"repo":"avelino/mcp","pr":412}', acl:'deny · no grant covers write', cls:'write (override)' },
+  { t:'22:13:55', who:'alice', tool:'slack__post_message', kind:'write', st:'ok', ms:233, args:'{"channel":"#eng","text":"deploy ok"}', acl:'allow · role=dev, tool grant', cls:'write (heuristic, 0.88)' },
+  { t:'22:13:41', who:'bob', tool:'sentry__search_issues', kind:'read', st:'ok', ms:388, args:'{"query":"level:error since:-1h"}', acl:'allow · role=readonly', cls:'read (heuristic, 0.94)' },
+  { t:'22:13:30', who:'bob', tool:'github__search_repositories', kind:'read', st:'error', ms:30014, args:'{"query":"mcp"}', acl:'allow · role=dev', cls:'read (heuristic, 0.91)' },
+  { t:'22:13:12', who:'alice', tool:'grafana__search_dashboards', kind:'read', st:'ok', ms:1204, args:'{"query":"api-latency"}', acl:'allow · role=dev', cls:'read (heuristic, 0.97)' },
+  { t:'22:12:58', who:'ops-bot', tool:'pagerduty__acknowledge_incident', kind:'write', st:'ok', ms:180, args:'{"id":"PD-9912"}', acl:'allow · role=admin', cls:'write (heuristic, 0.83)' },
+  { t:'22:12:31', who:'anonymous', tool:'sentry__resolve_issue', kind:'write', st:'denied', ms:0, args:'{"issue_id":"12345"}', acl:'deny · anonymous is always denied', cls:'write (heuristic, 0.90)' },
+];
+
+const roles = [
+  { name:'admin', grants:[{ s:'*', a:'*' }], n:1 },
+  { name:'dev', grants:[{ s:'github, grafana', a:'read' }, { s:'github', a:'write', t:'gh_pr, gh_issue' }], n:14 },
+  { name:'readonly', grants:[{ s:'*', a:'read' }], n:8 },
+];
+
+/* ------------------------------------------------------------------ utils */
+const $ = (sel, el) => (el || document).querySelector(sel);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));
+const stateChip = s => ({
+  connected: '<span class="chip ok"><span class="dot ok"></span>connected</span>',
+  idle: '<span class="chip n"><span class="dot idle"></span>idle</span>',
+  cached: '<span class="chip n">cached</span>',
+  error: '<span class="chip err"><span class="dot err"></span>401</span>',
+}[s] || s);
+const typeChip = t => `<span class="chip">${t}</span>`;
+
+function json(s) {
+  return esc(s)
+    .replace(/(&quot;(?:[^&]|&(?!quot;))*?&quot;)(\s*:)/g, '<span class="k-key">$1</span>$2')
+    .replace(/:(\s*)(&quot;(?:[^&]|&(?!quot;))*?&quot;)/g, ':$1<span class="k-str">$2</span>')
+    .replace(/:(\s*)(-?\d+(?:\.\d+)?)/g, ':$1<span class="k-num">$2</span>')
+    .replace(/:(\s*)(true|false)/g, ':$1<span class="k-bool">$2</span>')
+    .replace(/:(\s*)(null)/g, ':$1<span class="k-null">$2</span>');
+}
+
+function sparkline(data, w, h, color) {
+  const max = Math.max(...data), min = Math.min(...data);
+  const pts = data.map((v, i) => [i / (data.length - 1) * w, h - ((v - min) / (max - min || 1)) * (h - 4) - 2]);
+  const d = pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' ');
+  const area = d + ` L${w} ${h} L0 ${h} Z`;
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
+    <defs><linearGradient id="g${color.replace(/[^a-z0-9]/gi,'')}" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="${color}" stop-opacity=".28"/><stop offset="1" stop-color="${color}" stop-opacity="0"/>
+    </linearGradient></defs>
+    <path d="${area}" fill="url(#g${color.replace(/[^a-z0-9]/gi,'')})"/>
+    <path d="${d}" fill="none" stroke="${color}" stroke-width="1.4" stroke-linejoin="round"/></svg>`;
+}
+
+/* ------------------------------------------------------------------ views */
+const views = {};
+
+views.overview = () => {
+  const total = servers.reduce((a, s) => a + s.calls, 0);
+  return `
+  <div class="page-head">
+    <div>
+      <h1>Overview</h1>
+      <p class="sub">Um proxy, nove backends, cinco clientes. Nada de processo duplicado.</p>
+    </div>
+    <div class="actions">
+      <button class="btn" onclick="location.hash='#/activity'">Ver atividade</button>
+      <button class="btn primary" onclick="location.hash='#/playground'">Rodar um tool</button>
+    </div>
+  </div>
+
+  <div class="banner">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--warn)" stroke-width="2"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/></svg>
+    <div>
+      <div class="t">notion precisa de atenção</div>
+      <div class="d">O backend respondeu <code class="mono">401</code> na última descoberta e está fora do catálogo — 0 de 14 tools publicadas.</div>
+    </div>
+    <div class="actions">
+      <a class="btn sm" href="#/servers/notion">Diagnóstico</a>
+      <button class="btn sm primary" onclick="alert('Fluxo OAuth: abre o navegador em localhost:8085 e grava o token em auth.json')">Re-autenticar</button>
+    </div>
+  </div>
+
+  <div class="grid g4" style="margin-bottom:14px">
+    <div class="card stat">
+      <div class="k">Backends</div>
+      <div class="v">6<span class="muted" style="font-size:16px;font-weight:500">/9</span> <small>conectados</small></div>
+      <div class="d"><span class="dot ok"></span>3 idle com tools em cache · 1 com erro</div>
+    </div>
+    <div class="card stat">
+      <div class="k">Tools publicadas</div>
+      <div class="v">213 <small>cache</small></div>
+      <div class="d">+12 hoje · 128 read / 85 write</div>
+    </div>
+    <div class="card stat">
+      <div class="k">Clientes ativos</div>
+      <div class="v">5</div>
+      <div class="d">2 Claude Code · 1 Cursor · 1 opencode · 1 curl</div>
+    </div>
+    <div class="card stat">
+      <div class="k">Calls · 24h</div>
+      <div class="v">${total.toLocaleString('pt-BR')} <small>${(1.2).toFixed(1)}% erro</small></div>
+      <div class="d">p95 1,2s · 3 denials</div>
+    </div>
+  </div>
+
+  <div class="split">
+    <div class="stack">
+      <div class="card">
+        <div class="card-h">
+          <h2>Backends</h2>
+          <span class="chip n">${servers.length}</span>
+          <span class="spacer"></span>
+          <a class="btn sm ghost" href="#/servers">Gerenciar →</a>
+        </div>
+        <div class="card-b flush scroll-x">
+          <table>
+            <thead><tr><th>Servidor</th><th>Transporte</th><th>Estado</th><th class="num">Tools</th><th>Último uso</th><th>Idle policy</th></tr></thead>
+            <tbody>
+              ${servers.map(s => `
+                <tr class="click" onclick="location.hash='#/servers/${s.name}'">
+                  <td><div class="row"><span class="dot ${s.state === 'connected' ? 'ok' : s.state === 'error' ? 'err' : 'idle'}"></span>
+                    <span class="mono" style="font-weight:600">${s.name}</span></div></td>
+                  <td>${typeChip(s.type)}</td>
+                  <td>${stateChip(s.state)}</td>
+                  <td class="num">${s.tools || '—'}</td>
+                  <td class="muted mono tiny">${s.last === '—' ? '—' : s.last + ' atrás'}</td>
+                  <td class="muted tiny mono">${s.idle}</td>
+                </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="stack">
+      <div class="card">
+        <div class="card-h"><h2>Throughput</h2><span class="spacer"></span><span class="chip ok">ao vivo</span></div>
+        <div class="card-b">
+          ${sparkline([8,12,9,14,11,18,22,19,26,24,31,28,35,30,24,19,27,33,29,36,31,24,18,22], 340, 64, '#3fd6a6')}
+          <div class="row" style="justify-content:space-between;margin-top:8px">
+            <span class="tiny muted mono">−24h</span>
+            <span class="tiny muted">24h · pico 36/min</span>
+            <span class="tiny muted mono">agora</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-h"><h2>Negados recentemente</h2><span class="spacer"></span><span class="chip err">3</span></div>
+        <div class="card-b flush">
+          ${activity.filter(a => a.st === 'denied').slice(0, 3).map(a => `
+            <div style="padding:10px 14px;border-bottom:1px solid var(--line-soft)">
+              <div class="row"><span class="mono tiny" style="font-weight:600">${a.tool}</span><span class="spacer"></span><span class="tiny muted mono">${a.t}</span></div>
+              <div class="tiny muted" style="margin-top:3px">${esc(a.acl)}</div>
+            </div>`).join('')}
+          <div style="padding:8px 14px"><a class="tiny" href="#/activity" style="color:var(--accent)">Abrir trilha de auditoria →</a></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-h"><h2>Protocolo</h2></div>
+        <div class="card-b">
+          <dl class="kv">
+            <dt>Negociado</dt><dd class="mono tiny">2026-07-28</dd>
+            <dt>Legacy</dt><dd class="mono tiny">4 backends</dd>
+            <dt>Server auth</dt><dd>bearer + oauth_as</dd>
+            <dt>Admin roles</dt><dd class="mono tiny">admin</dd>
+          </dl>
+        </div>
+      </div>
+    </div>
+  </div>`;
+};
+
+views.servers = (param) => {
+  const cur = servers.find(s => s.name === param) || servers[0];
+  return `
+  <div class="page-head">
+    <div><h1>Servers</h1><p class="sub">Config, credenciais e catálogo de cada backend.</p></div>
+    <div class="actions">
+      <button class="btn" onclick="alert('Busca no registry oficial (registry.modelcontextprotocol.io) e gera o bloco de config')">+ Do registry</button>
+      <button class="btn primary" onclick="alert('Formulário HTTP: nome, URL, headers, idle policy → diff → aplicar')">+ Servidor HTTP</button>
+    </div>
+  </div>
+  <div class="split" style="grid-template-columns:280px 1fr">
+    <div class="card">
+      <div class="card-b" style="padding:10px">
+        <input class="input" placeholder="Filtrar…" style="font-family:var(--sans);margin-bottom:8px">
+      </div>
+      <div class="tlist" style="max-height:640px">
+        ${servers.map(s => `
+          <div class="titem ${s.name === cur.name ? 'on' : ''}" onclick="location.hash='#/servers/${s.name}'">
+            <span class="dot ${s.state === 'connected' ? 'ok' : s.state === 'error' ? 'err' : 'idle'}"></span>
+            <span class="n">${s.name}</span>
+            <span class="g chip n">${s.tools || 0}</span>
+          </div>`).join('')}
+      </div>
+    </div>
+
+    <div>
+      <div class="detail-head">
+        <div class="avatar">${cur.name[0].toUpperCase()}</div>
+        <div style="min-width:0">
+          <div class="row" style="gap:8px"><h1 style="font-size:18px">${cur.name}</h1>${typeChip(cur.type)}${stateChip(cur.state)}</div>
+          <div class="tiny muted mono" style="margin-top:4px">${esc(cur.endpoint)}</div>
+        </div>
+        <div style="margin-left:auto" class="row">
+          <button class="btn sm" onclick="alert('Envia tools/list para o backend agora e recarrega o cache')">Testar conexão</button>
+          <a class="btn sm primary" href="#/edit/sentry">Editar</a>
+        </div>
+      </div>
+
+      <div class="grid g3" style="margin-bottom:14px">
+        <div class="card stat"><div class="k">Tools</div><div class="v">${cur.tools}</div><div class="d"><span class="chip read">${cur.read} read</span><span class="chip warn">${cur.write} write</span></div></div>
+        <div class="card stat"><div class="k">Credencial</div><div class="v" style="font-size:14px;font-family:var(--mono);margin-top:10px">${esc(cur.auth)}</div><div class="d">${cur.state === 'error' ? '<span class="chip err">expirada</span>' : '<span class="chip ok">válida</span>'}</div></div>
+        <div class="card stat"><div class="k">Idle policy</div><div class="v" style="font-size:14px;font-family:var(--mono);margin-top:10px">${esc(cur.idle)}</div><div class="d">reaper roda a cada 30s</div></div>
+      </div>
+
+      <div class="tabs">
+        <button class="on">Catálogo</button><button>Config</button><button>ACL efetiva</button><button>Histórico</button>
+      </div>
+
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-b flush">
+          <table>
+            <thead><tr><th>Tool</th><th>Classificação</th><th>Descrição</th><th class="num">Calls 24h</th></tr></thead>
+            <tbody>
+              ${tools.filter(t => t.s === cur.name).map(t => `
+                <tr class="click" onclick="location.hash='#/playground'">
+                  <td class="mono" style="font-weight:600">${t.n}</td>
+                  <td><span class="chip ${t.kind === 'read' ? 'read' : 'warn'}">${t.kind}</span></td>
+                  <td class="muted tiny">${esc(t.d || '—')}</td>
+                  <td class="num">${Math.floor(Math.random() * 90) + 3}</td>
+                </tr>`).join('')}
+              ${cur.tools === 0 ? `<tr><td colspan="4"><div class="empty">Nenhuma tool — o backend não completou a descoberta.<br><span class="tiny">Último erro: <code class="mono">401 Unauthorized</code></span></div></td></tr>` : ''}
+            </tbody>
+          </table>
+        </div>
+        <div class="card-h" style="border-bottom:0;border-top:1px solid var(--line-soft)">
+          <span class="tiny muted">Prévia do cache · <a href="#/playground" style="color:var(--accent)">abrir as 12 no playground →</a></span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-h"><h2>Config efetiva</h2><span class="spacer"></span><span class="chip n">segredos redigidos</span></div>
+        <div class="card-b">
+<pre class="code">{
+  <span class="k-key">"mcpServers"</span>: {
+    <span class="k-key">"${cur.name}"</span>: {
+      <span class="k-key">"${cur.type === 'http' ? 'url' : 'command'}"</span>: <span class="k-str">"${esc(cur.type === 'http' ? cur.endpoint : cur.endpoint.split(' ')[0])}"</span>,${cur.type === 'stdio' ? `
+      <span class="k-key">"args"</span>: [<span class="k-str">"${esc(cur.endpoint.split(' ').slice(1).join(' '))}"</span>],` : ''}
+      <span class="k-key">"idle_timeout"</span>: <span class="k-str">"${cur.idle.replace('adaptive · ', 'adaptive')}"</span>${cur.type === 'http' ? `,
+      <span class="k-key">"headers"</span>: { <span class="k-key">"Authorization"</span>: <span class="k-redact">"••••••••  (${'${'}${cur.name.toUpperCase()}_TOKEN})"</span> }` : ''}
+    }
+  }
+}</pre>
+          <div class="tiny muted" style="margin-top:10px">Fonte: <code class="mono">~/.config/mcp/servers.json</code> · hash <code class="mono">a91f…3c2</code> · modificado há 3 dias</div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+};
+
+views.playground = () => {
+  const t = tools[0];
+  return `
+  <div class="page-head">
+    <div><h1>Playground</h1><p class="sub">Formulário gerado do <code class="mono">inputSchema</code>. O mesmo JSON-RPC que a CLI envia.</p></div>
+    <div class="actions"><button class="btn" onclick="alert('Mostra a request JSON-RPC sem conectar (mcp --dry-run)')">Dry-run</button></div>
+  </div>
+  <div class="split pg">
+    <div class="card">
+      <div class="card-b" style="padding:10px"><input class="input" placeholder="Buscar tool…" style="font-family:var(--sans)"></div>
+      <div class="tlist" style="max-height:600px">
+        ${['sentry','github','slack','grafana','pagerduty'].map(s => `
+          <div class="nav-label" style="padding:8px 12px 4px">${s}</div>
+          ${tools.filter(x => x.s === s).map(x => `
+            <div class="titem ${x.n === t.n ? 'on' : ''}" onclick="document.querySelectorAll('.titem').forEach(e=>e.classList.remove('on'));this.classList.add('on')">
+              <span class="n">${x.n}</span>
+              <span class="g chip ${x.kind === 'read' ? 'read' : 'warn'}">${x.kind}</span>
+            </div>`).join('')}`).join('')}
+      </div>
+    </div>
+
+    <div class="stack">
+      <div class="card">
+        <div class="card-h">
+          <div><div class="mono" style="font-weight:600;font-size:12.5px">sentry__${t.n}</div></div>
+          <span class="chip read">read</span>
+          <span class="spacer"></span>
+          <div class="seg"><button class="on">Form</button><button>JSON</button></div>
+        </div>
+        <div class="card-b">
+          <p class="tiny muted" style="margin:0 0 14px">${t.desc}</p>
+          ${t.schema.map(f => `
+            <div class="field">
+              <label>${f.k} <span class="chip n">${f.t}</span> ${f.req ? '<span class="req">obrigatório</span>' : ''}</label>
+              ${f.big ? `<textarea rows="2" placeholder="${f.ph}">is:unresolved level:error</textarea>`
+                : f.t === 'enum' ? `<select>${f.opts.map(o => `<option ${o === f.val ? 'selected' : ''}>${o}</option>`).join('')}</select>`
+                : `<input class="input" value="${f.val || ''}" placeholder="${f.ph || ''}">`}
+              <div class="hint">${f.d}</div>
+            </div>`).join('')}
+          <div class="row" style="margin-top:16px;flex-wrap:wrap">
+            <button class="btn primary" onclick="runTool()">Run <span class="kbd" style="background:transparent;border-color:rgba(0,0,0,.25);color:#04120d">⌘↵</span></button>
+            <button class="btn ghost">Salvar como coleção</button>
+            <span class="spacer"></span>
+            <span class="tiny muted mono">identity: alice · dev</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" id="result">
+        <div class="card-h"><h2>Resultado</h2><span class="spacer"></span><span class="chip ok" id="resMeta">200 · 412ms · 2.1 KB</span></div>
+        <div class="card-b">${resultJSON()}</div>
+      </div>
+    </div>
+
+    <div class="stack">
+      <div class="card">
+        <div class="card-h"><h2>JSON-RPC</h2><span class="spacer"></span><span class="chip n">POST /mcp</span></div>
+        <div class="card-b" style="padding:10px">
+<pre class="code" style="font-size:10.5px">{
+  <span class="k-key">"jsonrpc"</span>: <span class="k-str">"2.0"</span>,
+  <span class="k-key">"id"</span>: <span class="k-num">42</span>,
+  <span class="k-key">"method"</span>: <span class="k-str">"tools/call"</span>,
+  <span class="k-key">"params"</span>: {
+    <span class="k-key">"name"</span>: <span class="k-str">"sentry__search_issues"</span>,
+    <span class="k-key">"arguments"</span>: {
+      <span class="k-key">"query"</span>: <span class="k-str">"is:unresolved level:error"</span>,
+      <span class="k-key">"sort"</span>: <span class="k-str">"date"</span>,
+      <span class="k-key">"per_page"</span>: <span class="k-num">25</span>
+    },
+    <span class="k-key">"_meta"</span>: {
+      <span class="k-key">"io.modelcontextprotocol/protocolVersion"</span>: <span class="k-str">"2026-07-28"</span>
+    }
+  }
+}</pre>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-h"><h2>Últimas execuções</h2></div>
+        <div class="card-b flush">
+          ${[['22:14:02','412ms','ok'],['22:10:41','1.2s','ok'],['22:04:18','389ms','ok'],['21:51:07','2.0s','error']].map(r => `
+            <div class="row" style="padding:9px 14px;border-bottom:1px solid var(--line-soft)">
+              <span class="mono tiny muted">${r[0]}</span><span class="spacer"></span>
+              <span class="mono tiny">${r[1]}</span>
+              <span class="chip ${r[2] === 'ok' ? 'ok' : 'err'}">${r[2]}</span>
+            </div>`).join('')}
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-h"><h2>ACL</h2></div>
+        <div class="card-b">
+          <div class="row" style="gap:6px"><span class="chip ok">allow</span><span class="tiny muted">role=dev · <span class="mono">sentry × read</span></span></div>
+          <dl class="kv" style="grid-template-columns:72px 1fr;font-size:11.5px;margin-top:12px">
+            <dt>alice</dt><dd class="allow">allow · dev</dd>
+            <dt>charlie</dt><dd class="allow">allow · readonly</dd>
+            <dt>ci-bot</dt><dd class="deny">deny · sem grant para sentry</dd>
+          </dl>
+        </div>
+      </div>
+    </div>
+  </div>`;
+};
+
+function resultJSON() {
+  return `<pre class="code" style="font-size:11px;max-height:320px">[
+  {
+    <span class="k-key">"shortId"</span>: <span class="k-str">"API-9F2"</span>,
+    <span class="k-key">"title"</span>: <span class="k-str">"Timeout ao chamar billing-service"</span>,
+    <span class="k-key">"level"</span>: <span class="k-str">"error"</span>,
+    <span class="k-key">"count"</span>: <span class="k-num">148</span>,
+    <span class="k-key">"lastSeen"</span>: <span class="k-str">"2026-10-22T22:13:58Z"</span>
+  },
+  {
+    <span class="k-key">"shortId"</span>: <span class="k-str">"API-9E8"</span>,
+    <span class="k-key">"title"</span>: <span class="k-str">"Pool exhausted on postgres-primary"</span>,
+    <span class="k-key">"level"</span>: <span class="k-str">"error"</span>,
+    <span class="k-key">"count"</span>: <span class="k-num">91</span>,
+    <span class="k-key">"lastSeen"</span>: <span class="k-str">"2026-10-22T21:58:12Z"</span>
+  }
+]</pre>
+  <div class="row" style="margin-top:10px">
+    <span class="chip n">text/plain → JSON</span>
+    <span class="spacer"></span>
+    <button class="btn sm ghost">Copiar</button>
+    <button class="btn sm ghost">Abrir na trilha</button>
+  </div>`;
+}
+
+function runTool() {
+  const el = $('#result');
+  el.style.opacity = '.45';
+  setTimeout(() => { el.style.opacity = '1'; }, 320);
+}
+
+views.activity = () => `
+  <div class="page-head">
+    <div><h1>Activity</h1><p class="sub">Toda chamada, toda decisão de ACL, toda recusa — do audit log local.</p></div>
+    <div class="actions"><button class="btn">Exportar JSONL</button><button class="btn" onclick="alert('mcp logs -f')">Abrir na CLI</button></div>
+  </div>
+
+  <div class="card" style="margin-bottom:14px">
+    <div class="card-b" style="padding:10px 12px">
+      <div class="toolbar">
+        <div class="seg" id="actSeg">
+          <button class="on">Tudo</button><button>Erros</button><button>Negados</button>
+        </div>
+        <select style="width:auto;font-family:var(--sans)"><option>Servidor: todos</option><option>sentry</option><option>github</option></select>
+        <select style="width:auto;font-family:var(--sans)"><option>Identity: todas</option><option>alice</option><option>bob</option></select>
+        <select style="width:auto;font-family:var(--sans)"><option>Período: 1h</option><option>24h</option><option>7d</option></select>
+        <span class="spacer"></span>
+        <span class="live"><span class="dot ok pulse" style="color:var(--accent)"></span>LIVE</span>
+        <span class="tiny muted mono">4/s</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-b flush scroll-x">
+      <table>
+        <thead><tr><th style="width:82px">Hora</th><th>Identity</th><th>Item</th><th>Tipo</th><th>ACL</th><th>Status</th><th class="num">Duração</th></tr></thead>
+        <tbody>
+          ${activity.map((a, i) => `
+            <tr class="act-row" onclick="toggle(${i})">
+              <td class="mono tiny muted">${a.t}</td>
+              <td><div class="row"><span class="avatar sm">${a.who[0]}</span><span class="tiny">${a.who}</span></div></td>
+              <td class="mono tiny" style="font-weight:600">${a.tool}</td>
+              <td><span class="chip ${a.kind === 'read' ? 'read' : 'warn'}">${a.kind}</span></td>
+              <td class="tiny ${a.acl.startsWith('deny') ? 'deny' : 'muted'}">${esc(a.acl.split(' · ')[0])}</td>
+              <td>${a.st === 'ok' ? '<span class="chip ok">200</span>' : a.st === 'denied' ? '<span class="chip err">403</span>' : '<span class="chip err">timeout</span>'}</td>
+              <td class="num ${a.ms > 5000 ? 'deny' : ''}">${a.ms ? a.ms + 'ms' : '—'}</td>
+            </tr>
+            <tr class="act-detail" id="d${i}" style="display:none">
+              <td colspan="7">
+                <div class="inner">
+                  <div>
+                    <h3 style="margin-bottom:8px">Argumentos</h3>
+<pre class="code" style="font-size:10.5px">${json(a.args)}</pre>
+                  </div>
+                  <div>
+                    <h3 style="margin-bottom:8px">Decisão</h3>
+                    <dl class="kv" style="grid-template-columns:88px 1fr;font-size:11.5px">
+                      <dt>ACL</dt><dd class="${a.acl.startsWith('deny') ? 'deny' : 'allow'}">${esc(a.acl)}</dd>
+                      <dt>Classificação</dt><dd class="mono tiny">${esc(a.cls)}</dd>
+                      <dt>Revisão</dt><dd class="mono tiny">2026-07-28</dd>
+                      <dt>Trace</dt><dd class="mono tiny">4bf92f3577b34da6</dd>
+                    </dl>
+                  </div>
+                </div>
+              </td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+    <div class="card-h" style="border-top:1px solid var(--line-soft);border-bottom:0">
+      <span class="tiny muted">8 de 1.842 entradas · retenção 30d · <code class="mono">~/.config/mcp/db/</code></span>
+      <span class="spacer"></span>
+      <button class="btn sm ghost">Carregar mais</button>
+    </div>
+  </div>`;
+
+function toggle(i) {
+  const d = $('#d' + i);
+  d.style.display = d.style.display === 'none' ? '' : 'none';
+}
+
+views.access = () => `
+  <div class="page-head">
+    <div><h1>Access</h1><p class="sub">Quem pode chamar o quê — e por quê. Union-based, deny sempre vence.</p></div>
+    <div class="actions"><button class="btn">Validar</button><button class="btn primary" onclick="alert('Diff do bloco serverAuth + acl → aplicar → mcp reload')">Editar política</button></div>
+  </div>
+
+  <div class="grid" style="grid-template-columns:1fr 380px">
+    <div class="stack">
+      <div class="card">
+        <div class="card-h"><h2>Roles</h2><span class="spacer"></span><span class="chip">default: <b style="color:var(--err)">deny</b></span><span class="chip n">strictClassification: false</span></div>
+        <div class="card-b flush">
+          ${roles.map(r => `
+            <div style="padding:12px 14px;border-bottom:1px solid var(--line-soft)">
+              <div class="row"><span class="mono" style="font-weight:600">${r.name}</span><span class="chip n">${r.n} ${r.n === 1 ? 'sujeito' : 'sujeitos'}</span><span class="spacer"></span><button class="btn sm ghost">Editar</button></div>
+              <div class="row" style="margin-top:8px;flex-wrap:wrap;gap:6px">
+                ${r.grants.map(g => `<span class="chip">${g.s} <span class="muted">·</span> <b class="${g.a === 'read' ? 'allow' : g.a === '*' ? 'maybe' : 'deny'}">${g.a}</b>${g.t ? ` <span class="muted">· ${g.t}</span>` : ''}</span>`).join('')}
+              </div>
+            </div>`).join('')}
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-h"><h2>Matriz efetiva</h2><span class="spacer"></span><span class="tiny muted">linhas = role · colunas = servidor</span></div>
+        <div class="card-b flush scroll-x">
+          <table class="matrix">
+            <thead><tr><th>role</th><th>sentry</th><th>github</th><th>slack</th><th>grafana</th><th>kubectl</th><th>pagerduty</th></tr></thead>
+            <tbody>
+              ${[['admin','*','*','*','*','*','*'],['dev','r','r/w*','r/w','r','—','—'],['readonly','r','r','r','r','r','r']].map(row => `
+                <tr><td class="mono" style="font-weight:600">${row[0]}</td>
+                ${row.slice(1).map(c => `<td class="cell ${c === '—' ? 'deny' : c.includes('w') ? 'maybe' : 'allow'}">${c}</td>`).join('')}
+                </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-h"><h2>Sujeitos</h2><span class="spacer"></span><span class="chip n">23</span></div>
+        <div class="card-b flush scroll-x">
+          <table>
+            <thead><tr><th>Sujeito</th><th>Roles</th><th>Grants extras</th><th>Último acesso</th><th class="num">Calls 24h</th></tr></thead>
+            <tbody>
+              ${[['alice','dev','—','2s','412'],['bob','dev, readonly','sentry read','4m','188'],['ops-bot','admin','—','12m','33'],['charlie','readonly','—','2d','0'],['ci-bot','dev','—','31s','96']].map(r => `
+                <tr><td class="mono tiny" style="font-weight:600">${r[0]}</td><td>${r[1].split(', ').map(x => `<span class="chip n">${x}</span>`).join(' ')}</td><td class="muted tiny">${r[2]}</td><td class="muted tiny mono">${r[3]}</td><td class="num">${r[4]}</td></tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="stack">
+      <div class="card">
+        <div class="card-h"><h2>Simulador</h2><span class="spacer"></span><span class="chip n">acl check</span></div>
+        <div class="card-b">
+          <div class="field"><label>Sujeito</label><select><option>bob</option><option>alice</option><option>ci-bot</option></select></div>
+          <div class="field"><label>Tool</label><select><option>github__gh_pr_merge</option><option>sentry__search_issues</option></select></div>
+          <button class="btn primary" style="width:100%">Avaliar</button>
+          <div class="verdict deny" style="margin-top:14px">
+            <div class="label deny">DENY</div>
+            <p class="tiny" style="margin:8px 0 0;color:var(--txt-2)">Nenhum grant cobre <code class="mono">write</code> em <code class="mono">github</code>. O role <b>dev</b> concede <code class="mono">access=read</code>; o grant seguinte é <code class="mono">write</code>, mas restrito aos tools <code class="mono">gh_pr, gh_issue</code> — <code class="mono">gh_pr_merge</code> não está na lista. Sem match, vale o <code class="mono">default: deny</code>.</p>
+            <div class="tiny muted" style="margin-top:10px;border-top:1px solid var(--line-soft);padding-top:8px">
+              <div>avaliadas: 3 grants · matched: 0 allow · default: <b class="deny">deny</b></div>
+              <div style="margin-top:4px">classificação: <span class="mono">write (override)</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-h"><h2>Tokens (bearer)</h2><span class="spacer"></span><button class="btn sm">+ Novo</button></div>
+        <div class="card-b flush">
+          ${[['ops-bot','admin','12d','hoje','3fa1'],['ci-bot','dev','31d','31s','9f2c'],['alice-laptop','dev','2d','2s','77b0']].map(t => `
+            <div style="padding:10px 14px;border-bottom:1px solid var(--line-soft)">
+              <div class="row"><span class="mono tiny" style="font-weight:600">${t[0]}</span><span class="chip n">${t[1]}</span><span class="spacer"></span><button class="btn sm ghost danger">Revogar</button></div>
+              <div class="tiny muted" style="margin-top:3px">criado há ${t[2]} · último uso ${t[3]} · <span class="mono">mcp_••••${t[4]}</span></div>
+            </div>`).join('')}
+        </div>
+        <div class="card-h" style="border-bottom:0;border-top:1px solid var(--line-soft)"><span class="tiny muted">Segredo só é exibido na criação.</span></div>
+      </div>
+
+      <div class="card">
+        <div class="card-h"><h2>Clientes OAuth</h2><span class="spacer"></span><span class="chip n">dynamic registration</span></div>
+        <div class="card-b flush">
+          ${[['Claude.ai','claude.ai/callback',3],['Cursor','cursor://anysphere…',1],['ChatGPT','chat.openai.com/aip/…',2]].map(c => `
+            <div class="row" style="padding:10px 14px;border-bottom:1px solid var(--line-soft)">
+              <div style="min-width:0"><div class="tiny" style="font-weight:600">${c[0]}</div><div class="tiny muted mono" style="font-size:10px">${c[1]}</div></div>
+              <span class="spacer"></span><span class="chip n">${c[2]} refresh</span>
+            </div>`).join('')}
+        </div>
+      </div>
+    </div>
+  </div>`;
+
+views.settings = () => `
+  <div class="page-head"><div><h1>Settings</h1><p class="sub">Onde as coisas ficam, o que está ligado, quem está rodando.</p></div></div>
+  <div class="grid g2">
+    <div class="card">
+      <div class="card-h"><h2>Caminhos</h2></div>
+      <div class="card-b">
+        <dl class="kv">
+          <dt>Config</dt><dd class="mono tiny">~/.config/mcp/servers.json</dd>
+          <dt>Auth</dt><dd class="mono tiny">~/.config/mcp/auth.json</dd>
+          <dt>OAuth AS state</dt><dd class="mono tiny">~/.config/mcp/auth_server.json</dd>
+          <dt>Banco</dt><dd class="mono tiny">~/.config/mcp/db/ (audit + cache)</dd>
+          <dt>Instâncias</dt><dd class="mono tiny">~/.config/mcp/instances/*.json</dd>
+        </dl>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-h"><h2>Instâncias</h2><span class="spacer"></span><button class="btn sm">Reload all</button></div>
+      <div class="card-b flush">
+        ${[['7332','http','127.0.0.1:7332','v0.6.2','4h12m','—'],['7411','http','127.0.0.1:7411','v0.6.2','18m','--only github,grafana'],['—','stdio','stdio','v0.6.2','2h','—']].map(i => `
+          <div class="row" style="padding:10px 14px;border-bottom:1px solid var(--line-soft)">
+            <span class="dot ok"></span>
+            <div><div class="tiny mono">${i[2]}</div><div class="tiny muted">pid ${i[0]} · ${i[3]} · uptime ${i[4]} ${i[5] !== '—' ? '· ' + i[5] : ''}</div></div>
+            <span class="spacer"></span><button class="btn sm ghost">Reload</button>
+          </div>`).join('')}
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-h"><h2>Auditoria</h2><span class="spacer"></span><span class="chip ok">ligada</span></div>
+      <div class="card-b">
+        <dl class="kv">
+          <dt>Destino</dt><dd class="mono tiny">db · audit:*</dd>
+          <dt>Argumentos</dt><dd>redigidos (<code class="mono">logArguments=false</code>)</dd>
+          <dt>Retenção</dt><dd>30 dias</dd>
+          <dt>Tamanho</dt><dd class="mono tiny">184 MB</dd>
+        </dl>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-h"><h2>Telemetria</h2></div>
+      <div class="card-b">
+        <dl class="kv">
+          <dt>OTLP</dt><dd>desligada (sem <code class="mono">OTEL_EXPORTER_OTLP_ENDPOINT</code>)</dd>
+          <dt>Métricas</dt><dd class="mono tiny">/metrics · Prometheus</dd>
+          <dt>Versão</dt><dd class="mono tiny">0.6.2</dd>
+        </dl>
+      </div>
+    </div>
+  </div>`;
+
+
+views.edit = (param) => {
+  const s = servers.find(x => x.name === param) || servers[0];
+  return `
+  <div class="page-head">
+    <div><h1>Editar servidor</h1><p class="sub">${s.name} · o arquivo é a fonte da verdade. Nada é gravado antes do diff.</p></div>
+    <div class="actions"><a class="btn" href="#/servers/${s.name}">Voltar</a></div>
+  </div>
+  <div class="split" style="grid-template-columns:minmax(0,1fr) 460px">
+    <div class="card">
+      <div class="card-h"><h2>Campos</h2><span class="spacer"></span><span class="chip n">servers.json</span></div>
+      <div class="card-b">
+        <div class="field"><label>Nome</label><input class="input" value="${s.name}" readonly style="color:var(--txt-3)"></div>
+        <div class="field"><label>URL</label><input class="input" value="${esc(s.endpoint)}"></div>
+        <div class="field"><label>Idle timeout</label>
+          <select><option>never</option><option selected>adaptive</option><option>30s</option><option>5m</option></select>
+          <div class="hint">min 60s · max 5m · o reaper roda a cada 30s</div>
+        </div>
+        <div class="field"><label>Headers</label>
+          <div class="row" style="gap:6px;margin-bottom:6px">
+            <input class="input" value="Authorization" style="width:140px">
+            <input class="input" value="Bearer ${'${'}${s.name.toUpperCase()}_TOKEN}" style="flex:1">
+          </div>
+          <div class="hint">Valores com <code class="mono">${'${'}VAR}</code> ficam literais no arquivo — a UI nunca grava o segredo.</div>
+        </div>
+        <div class="field"><label>tool_acl</label>
+          <div class="row" style="gap:6px;flex-wrap:wrap">
+            <span class="chip read">read: search_*, get_*</span><span class="chip warn">write: resolve_*</span>
+            <button class="btn sm ghost">+ grant</button>
+          </div>
+        </div>
+        <div class="row" style="margin-top:16px">
+          <button class="btn primary" onclick="alert('apply: valida → grava atômico (tmp+rename, 0600, backup) → reload')">Aplicar e recarregar</button>
+          <button class="btn ghost">Descartar</button>
+        </div>
+      </div>
+    </div>
+    <div class="stack">
+      <div class="card">
+        <div class="card-h"><h2>Diff</h2><span class="spacer"></span><span class="chip ok">válido</span></div>
+        <div class="card-b flush">
+<pre class="code" style="border:0;border-radius:0;font-size:10.5px"><span class="k-com">--- a/servers.json</span>
+<span class="k-com">+++ b/servers.json</span>
+<span class="k-key">@@ -12,7 +12,7 @@</span>
+     <span class="k-key">"sentry"</span>: {
+       <span class="k-key">"url"</span>: <span class="k-str">"https://mcp.sentry.dev/sse"</span>,
+<span class="deny">-      "idle_timeout": "never"</span>
+<span class="allow">+      "idle_timeout": "adaptive"</span>
+     }</pre>
+        </div>
+        <div class="card-h" style="border-top:1px solid var(--line-soft);border-bottom:0">
+          <span class="tiny muted">1 linha · comentários e <code class="mono">${'${'}VAR}</code> preservados</span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-h"><h2>Impacto</h2></div>
+        <div class="card-b">
+          <dl class="kv" style="grid-template-columns:110px 1fr;font-size:11.5px">
+            <dt>Instâncias</dt><dd>2 recebem SIGHUP</dd>
+            <dt>Cache</dt><dd>sentry é invalidado</dd>
+            <dt>Restart?</dt><dd class="allow">não</dd>
+            <dt>Backup</dt><dd class="mono tiny">servers.json.bak.2214</dd>
+          </dl>
+          <div class="tiny muted" style="margin-top:10px">Se outra pessoa alterar o arquivo antes de você aplicar, a gravação é recusada com <code class="mono">409</code> e o diff é reaberto.</div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+};
+
+/* ------------------------------------------------------------------ router */
+const titles = { overview:'Overview', servers:'Servers', edit:'Editar servidor', playground:'Playground', activity:'Activity', access:'Access', settings:'Settings' };
+function route() {
+  const [_, name = 'overview', param] = (location.hash || '#/overview').split('/');
+  const fn = views[name] || views.overview;
+  $('#view').innerHTML = fn(param);
+  $('#crumb').textContent = titles[name] || 'Overview';
+  document.querySelectorAll('[data-route]').forEach(a => a.classList.toggle('on', a.dataset.route === name || (name === 'edit' && a.dataset.route === 'servers')));
+  window.scrollTo(0, 0);
+}
+window.addEventListener('hashchange', route);
+route();
+
+/* ------------------------------------------------------------------ palette */
+const items = [
+  ...['overview','servers','playground','activity','access','settings'].map(r => ({ label: titles[r], hint: 'página', go: '#/' + r })),
+  ...servers.map(s => ({ label: s.name, hint: 'servidor', go: '#/servers/' + s.name })),
+  ...tools.map(t => ({ label: t.s + '__' + t.n, hint: 'tool', go: '#/playground' })),
+];
+let sel = 0;
+function renderPalette(q) {
+  const list = items.filter(i => i.label.toLowerCase().includes(q.toLowerCase())).slice(0, 9);
+  sel = 0;
+  $('#paletteRes').innerHTML = list.map((i, n) => `<div class="ritem ${n === 0 ? 'on' : ''}" onclick="location.hash='${i.go}';closePalette()">
+      <span class="mono tiny">${esc(i.label)}</span><span class="k">${i.hint}</span></div>`).join('') || '<div class="empty">nada encontrado</div>';
+}
+function openPalette() { $('#paletteWrap').classList.add('open'); $('#paletteInput').value = ''; renderPalette(''); $('#paletteInput').focus(); }
+function closePalette() { $('#paletteWrap').classList.remove('open'); }
+$('#openPalette').onclick = openPalette;
+$('#paletteInput').oninput = e => renderPalette(e.target.value);
+$('#paletteWrap').onclick = e => { if (e.target.id === 'paletteWrap') closePalette(); };
+document.addEventListener('keydown', e => {
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); openPalette(); }
+  if (e.key === 'Escape') closePalette();
+  if (e.key === 'Enter' && $('#paletteWrap').classList.contains('open')) {
+    const on = $('#paletteRes .ritem.on'); if (on) on.click();
+  }
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    if (!$('#paletteWrap').classList.contains('open')) return;
+    e.preventDefault();
+    const rs = [...document.querySelectorAll('#paletteRes .ritem')];
+    if (!rs.length) return;
+    sel = (sel + (e.key === 'ArrowDown' ? 1 : rs.length - 1)) % rs.length;
+    rs.forEach((r, i) => r.classList.toggle('on', i === sel));
+  }
+});
+</script>
+</body>
+</html>
